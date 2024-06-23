@@ -1,0 +1,61 @@
+from fastapi import FastAPI, HTTPException
+from typing import List, Dict, Any
+from pydantic import BaseModel
+
+app = FastAPI()
+
+# Assuming these functions are your existing implementations
+async def get_exploration_ids(user_id: str) -> List[str]:
+    # Placeholder implementation for the example
+    # Replace this with the actual function call to your existing /explore/{user_id} endpoint
+    return ["exploration_id_1", "exploration_id_2"]
+
+async def get_event_details(exploration_id: str) -> List[Dict[str, Any]]:
+    # Placeholder implementation for the example
+    # Replace this with the actual function call to your existing /event/{exploration_id} endpoint
+    return [
+        {"source_hash": "source1", "dest_hash": "dest1", "other_details": "details1"},
+        {"source_hash": "source2", "dest_hash": "dest2", "other_details": "details2"}
+    ]
+
+@app.get("/graph/{user_id}")
+async def get_graph(user_id: str):
+    # Get exploration_ids using the existing /explore/{user_id} endpoint
+    exploration_ids = await get_exploration_ids(user_id)
+    if not exploration_ids:
+        raise HTTPException(status_code=404, detail="No exploration IDs found for user")
+
+    # Get event details for each exploration_id
+    graph = {}
+    nodes = []
+    seen_nodes = set()
+
+    for exploration_id in exploration_ids:
+        events = await get_event_details(exploration_id)
+        for event in events:
+            source = event["source_hash"]
+            dest = event["dest_hash"]
+            
+            # Build the graph
+            if source not in graph:
+                graph[source] = []
+            graph[source].append(dest)
+
+            # Collect node details, avoiding duplicates
+            if source not in seen_nodes:
+                nodes.append(event)  # You might need to adjust this depending on the structure
+                seen_nodes.add(source)
+            if dest not in seen_nodes:
+                nodes.append(event)  # You might need to adjust this depending on the structure
+                seen_nodes.add(dest)
+
+    # Construct the response
+    response = {
+        "graph": graph,
+        "nodes": nodes
+    }
+
+    return response
+
+# To run the application, use the following command:
+# uvicorn main:app --reload
