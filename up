@@ -1,0 +1,497 @@
+Project Structure
+css
+Copy code
+my_fastapi_app/
+├── main.py
+├── routers/
+│   └── upload.py
+└── repositories/
+    └── file_operations.py
+1. Router Module
+Create a router for handling the file upload and processing.
+
+routers/upload.py
+python
+Copy code
+from fastapi import APIRouter, File, UploadFile, HTTPException, Form
+from pydantic import BaseModel
+from typing import Dict
+from repositories.file_operations import save_and_extract_images
+import json
+
+router = APIRouter()
+
+class EventModel(BaseModel):
+    source_hash: str
+    dest_hash: str
+    # Add other fields as necessary
+
+@router.post("/upload")
+async def upload_file(zipped_file: UploadFile = File(...), event: str = Form(...)):
+    try:
+        event_data = json.loads(event)
+        event_model = EventModel(**event_data)
+        await save_and_extract_images(zipped_file, event_model.source_hash)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File upload and extraction failed: {str(e)}")
+    
+    return {"detail": "File uploaded and images extracted successfully."}
+2. Repository Module
+Create a repository for handling file operations, including unzipping the files.
+
+repositories/file_operations.py
+python
+Copy code
+import os
+import zipfile
+from fastapi import UploadFile
+from typing import Any
+
+async def save_and_extract_images(zipped_file: UploadFile, source_hash: str):
+    # Define the upload directory
+    upload_dir = os.path.join("uploads", source_hash)
+    
+    # Ensure the directory exists
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
+    
+    # Save the ZIP file temporarily
+    temp_zip_path = os.path.join(upload_dir, zipped_file.filename)
+    with open(temp_zip_path, "wb") as buffer:
+        buffer.write(await zipped_file.read())
+    
+    # Extract the ZIP file
+    with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
+        zip_ref.extractall(upload_dir)
+    
+    # Remove the temporary ZIP file
+    os.remove(temp_zip_path)
+3. Main Application Module
+Import the router and include it in the FastAPI application.
+
+main.py
+python
+Copy code
+from fastapi import FastAPI
+from routers import upload
+
+app = FastAPI()
+
+# Include the router
+app.include_router(upload.router, prefix="/files", tags=["files"])
+Client-Side Script
+Assuming the client-side function is sending the zipped file and event data to the server.
+
+Client-Side Script (upload.py)
+python
+Copy code
+import requests
+import json
+
+def upload_files(zipped_file_path, event):
+    # The URL of the HTTP server endpoint
+    url = "http://127.0.0.1:8000/files/upload"
+    
+    # Open the ZIP file in binary mode
+    with open(zipped_file_path, "rb") as zipped_file:
+        files = {"zipped_file": zipped_file}
+        data = {"event": json.dumps(event)}
+        
+        response = requests.post(url, files=files, data=data)
+    
+    # Print the server's response
+    print(response.json())
+
+# Example usage
+zipped_file_path = "path/to/your/file.zip"
+event = {
+    "source_hash": "example_source_hash",
+    "dest_hash": "example_dest_hash",
+    # Add other event details
+}
+upload_files(zipped_file_path, event)
+Explanation:
+Router Module (routers/upload.py):
+
+Defines an endpoint /upload to handle file uploads and event data.
+Parses the event data and calls save_and_extract_images from the repository.
+Repository Module (repositories/file_operations.py):
+
+Contains the save_and_extract_images function that:
+Creates a directory named after the source_hash.
+Saves the uploaded ZIP file temporarily.
+Extracts the images from the ZIP file into the created directory.
+Removes the temporary ZIP file.
+Main Application Module (main.py):
+
+Initializes the FastAPI application and includes the router from the routers module.
+Client-Side Script (upload.py):
+
+Defines the upload_files function that:
+Sends the zipped file and event data to the server.
+By following this structure, your FastAPI application will handle the file upload and extraction process in a modular and organized manner.
+
+Assume that i am reading zipped file as 'rb' on client side only and sending only source_hash to server
+ChatGPT
+Given the scenario where the client-side reads the ZIP file in binary mode and sends only the source_hash along with the ZIP file to the server, we can simplify the code accordingly. Here’s how you can achieve this:
+
+Project Structure
+css
+Copy code
+my_fastapi_app/
+├── main.py
+├── routers/
+│   └── upload.py
+└── repositories/
+    └── file_operations.py
+1. Router Module
+Create a router for handling the file upload and processing.
+
+routers/upload.py
+python
+Copy code
+from fastapi import APIRouter, File, UploadFile, HTTPException, Form
+from repositories.file_operations import save_and_extract_images
+
+router = APIRouter()
+
+@router.post("/upload")
+async def upload_file(zipped_file: UploadFile = File(...), source_hash: str = Form(...)):
+    try:
+        await save_and_extract_images(zipped_file, source_hash)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File upload and extraction failed: {str(e)}")
+    
+    return {"detail": "File uploaded and images extracted successfully."}
+2. Repository Module
+Create a repository for handling file operations, including unzipping the files.
+
+repositories/file_operations.py
+python
+Copy code
+import os
+import zipfile
+from fastapi import UploadFile
+
+async def save_and_extract_images(zipped_file: UploadFile, source_hash: str):
+    # Define the upload directory
+    upload_dir = os.path.join("uploads", source_hash)
+    
+    # Ensure the directory exists
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
+    
+    # Save the ZIP file temporarily
+    temp_zip_path = os.path.join(upload_dir, zipped_file.filename)
+    with open(temp_zip_path, "wb") as buffer:
+        buffer.write(await zipped_file.read())
+    
+    # Extract the ZIP file
+    with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
+        zip_ref.extractall(upload_dir)
+    
+    # Remove the temporary ZIP file
+    os.remove(temp_zip_path)
+3. Main Application Module
+Import the router and include it in the FastAPI application.
+
+main.py
+python
+Copy code
+from fastapi import FastAPI
+from routers import upload
+
+app = FastAPI()
+
+# Include the router
+app.include_router(upload.router, prefix="/files", tags=["files"])
+Client-Side Script
+The client-side function sends the zipped file and source_hash to the server.
+
+Client-Side Script (upload.py)
+python
+Copy code
+import requests
+
+def upload_files(zipped_file_path, source_hash):
+    # The URL of the HTTP server endpoint
+    url = "http://127.0.0.1:8000/files/upload"
+    
+    # Open the ZIP file in binary mode
+    with open(zipped_file_path, "rb") as zipped_file:
+        files = {"zipped_file": zipped_file}
+        data = {"source_hash": source_hash}
+        
+        response = requests.post(url, files=files, data=data)
+    
+    # Print the server's response
+    print(response.json())
+
+# Example usage
+zipped_file_path = "path/to/your/file.zip"
+source_hash = "example_source_hash"
+upload_files(zipped_file_path, source_hash)
+Explanation:
+Router Module (routers/upload.py):
+
+Defines an endpoint /upload to handle file uploads and source_hash.
+Calls save_and_extract_images from the repository.
+Repository Module (repositories/file_operations.py):
+
+Contains the save_and_extract_images function that:
+Creates a directory named after the source_hash.
+Saves the uploaded ZIP file temporarily.
+Extracts the images from the ZIP file into the created directory.
+Removes the temporary ZIP file.
+Main Application Module (main.py):
+
+Initializes the FastAPI application and includes the router from the routers module.
+Client-Side Script (upload.py):
+
+Defines the upload_files function that:
+Sends the zipped file and source_hash to the server.
+By following this structure, your FastAPI application will handle the file upload and extraction process effectively, with the necessary separation of concerns for better maintainability.
+
+i have already extracted the zip file on client side and sending images from extracted fodler
+ChatGPT
+Got it. If the client-side extracts the ZIP file and sends the images along with the source_hash, we can modify the code to handle multiple image files.
+
+Here's the updated setup:
+
+Project Structure
+css
+Copy code
+my_fastapi_app/
+├── main.py
+├── routers/
+│   └── upload.py
+└── repositories/
+    └── file_operations.py
+1. Router Module
+Create a router for handling the file uploads and processing.
+
+routers/upload.py
+python
+Copy code
+from fastapi import APIRouter, File, UploadFile, HTTPException, Form
+from typing import List
+from repositories.file_operations import save_images
+
+router = APIRouter()
+
+@router.post("/upload")
+async def upload_images(
+    files: List[UploadFile] = File(...), 
+    source_hash: str = Form(...)
+):
+    try:
+        await save_images(files, source_hash)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
+    
+    return {"detail": "Files uploaded successfully."}
+2. Repository Module
+Create a repository for handling file operations.
+
+repositories/file_operations.py
+python
+Copy code
+import os
+from fastapi import UploadFile
+from typing import List
+
+async def save_images(files: List[UploadFile], source_hash: str):
+    # Define the upload directory
+    upload_dir = os.path.join("uploads", source_hash)
+    
+    # Ensure the directory exists
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
+    
+    for file in files:
+        # Define the file location
+        file_location = os.path.join(upload_dir, file.filename)
+        
+        # Save the uploaded file
+        with open(file_location, "wb") as buffer:
+            buffer.write(await file.read())
+3. Main Application Module
+Import the router and include it in the FastAPI application.
+
+main.py
+python
+Copy code
+from fastapi import FastAPI
+from routers import upload
+
+app = FastAPI()
+
+# Include the router
+app.include_router(upload.router, prefix="/files", tags=["files"])
+Client-Side Script
+The client-side function sends multiple image files and source_hash to the server.
+
+Client-Side Script (upload.py)
+python
+Copy code
+import requests
+import os
+
+def upload_files(image_folder_path, source_hash):
+    # The URL of the HTTP server endpoint
+    url = "http://127.0.0.1:8000/files/upload"
+    
+    files = []
+    for filename in os.listdir(image_folder_path):
+        if filename.endswith((".png", ".jpg", ".jpeg")):  # Assuming images are in these formats
+            file_path = os.path.join(image_folder_path, filename)
+            files.append(("files", (filename, open(file_path, "rb"), "image/jpeg")))
+
+    data = {"source_hash": source_hash}
+    
+    response = requests.post(url, files=files, data=data)
+    
+    # Print the server's response
+    print(response.json())
+
+# Example usage
+image_folder_path = "path/to/your/extracted/images"
+source_hash = "example_source_hash"
+upload_files(image_folder_path, source_hash)
+Explanation:
+Router Module (routers/upload.py):
+
+Defines an endpoint /upload to handle multiple image file uploads and source_hash.
+Calls save_images from the repository.
+Repository Module (repositories/file_operations.py):
+
+Contains the save_images function that:
+Creates a directory named after the source_hash.
+Saves each uploaded image file into the created directory.
+Main Application Module (main.py):
+
+Initializes the FastAPI application and includes the router from the routers module.
+Client-Side Script (upload.py):
+
+Defines the upload_files function that:
+Sends multiple image files and source_hash to the server.
+Uses a loop to gather all image files from the specified folder and appends them to the files list.
+By following this structure, your FastAPI application will handle multiple image file uploads, saving them in a directory named after the source_hash, with the necessary separation of concerns for better maintainability.
+
+i cannot use requests because in other file named dbconnecter.py i have class DBConnecter which has used requests, so to make request i have to import that and use it like DBConnecter.request(...)
+ChatGPT
+Understood. If you need to use a specific class (DBConnecter) to make the requests, you can adjust the client-side script to utilize that class for the HTTP request.
+
+Here's how you can structure your code:
+
+1. Client-Side Script with DBConnecter
+First, make sure you have your DBConnecter class set up properly in dbconnecter.py.
+
+dbconnecter.py
+python
+Copy code
+import requests
+
+class DBConnecter:
+    @staticmethod
+    def request(method, url, **kwargs):
+        response = requests.request(method, url, **kwargs)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        return response
+2. Adjust Client-Side Script to Use DBConnecter
+Now, modify your client-side script to use DBConnecter for making the HTTP request.
+
+Client-Side Script (upload.py)
+python
+Copy code
+import os
+from dbconnecter import DBConnecter
+
+def upload_files(image_folder_path, source_hash):
+    # The URL of the HTTP server endpoint
+    url = "http://127.0.0.1:8000/files/upload"
+    
+    files = []
+    for filename in os.listdir(image_folder_path):
+        if filename.endswith((".png", ".jpg", ".jpeg")):  # Assuming images are in these formats
+            file_path = os.path.join(image_folder_path, filename)
+            files.append(("files", (filename, open(file_path, "rb"), "image/jpeg")))
+
+    data = {"source_hash": source_hash}
+    
+    response = DBConnecter.request("POST", url, files=files, data=data)
+    
+    # Print the server's response
+    print(response.json())
+
+# Example usage
+image_folder_path = "path/to/your/extracted/images"
+source_hash = "example_source_hash"
+upload_files(image_folder_path, source_hash)
+Server-Side Setup
+The server-side setup remains the same as previously outlined. Here it is again for clarity:
+
+routers/upload.py
+python
+Copy code
+from fastapi import APIRouter, File, UploadFile, HTTPException, Form
+from typing import List
+from repositories.file_operations import save_images
+
+router = APIRouter()
+
+@router.post("/upload")
+async def upload_images(
+    files: List[UploadFile] = File(...), 
+    source_hash: str = Form(...)
+):
+    try:
+        await save_images(files, source_hash)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
+    
+    return {"detail": "Files uploaded successfully."}
+repositories/file_operations.py
+python
+Copy code
+import os
+from fastapi import UploadFile
+from typing import List
+
+async def save_images(files: List[UploadFile], source_hash: str):
+    # Define the upload directory
+    upload_dir = os.path.join("uploads", source_hash)
+    
+    # Ensure the directory exists
+    if not os.path.exists(upload_dir):
+        os.makedirs(upload_dir)
+    
+    for file in files:
+        # Define the file location
+        file_location = os.path.join(upload_dir, file.filename)
+        
+        # Save the uploaded file
+        with open(file_location, "wb") as buffer:
+            buffer.write(await file.read())
+main.py
+python
+Copy code
+from fastapi import FastAPI
+from routers import upload
+
+app = FastAPI()
+
+# Include the router
+app.include_router(upload.router, prefix="/files", tags=["files"])
+Explanation:
+DBConnecter Class:
+
+Provides a static method request to make HTTP requests using the requests library.
+Client-Side Script (upload.py):
+
+Uses DBConnecter.request to send the POST request to the FastAPI server.
+Collects all image files from the specified folder and sends them along with the source_hash.
+Server-Side Setup:
+
+Handles the uploaded image files and saves them in a directory named after the source_hash.
+By structuring your code this way, you can utilize the DBConnecter class to make the HTTP requests, keeping your code organized and consistent with the rest of your application.
