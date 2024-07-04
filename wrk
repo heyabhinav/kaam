@@ -1,0 +1,367 @@
+Step 1: Create the Android App in Kotlin
+Open Android Studio and create a new project.
+
+Choose Empty Activity and name your project (e.g., SimpleApp).
+
+Set up the UI:
+Open res/layout/activity_main.xml and update it to include a button:
+--------------------------------------------------------------------------------
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <Button
+        android:id="@+id/button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Go to Next Screen"
+        android:layout_centerInParent="true"/>
+</RelativeLayout>
+--------------------------------------------------------------------------------------
+Update the MainActivity:
+Open MainActivity.kt and set up the button to navigate to another screen:
+--------------------------------------------------------------------------------------
+package com.example.simpleapp
+
+import android.content.Intent
+import androidx.appcompat.app.AppCompatActivity
+import android.os.Bundle
+import android.widget.Button
+
+class MainActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        val button: Button = findViewById(R.id.button)
+        button.setOnClickListener {
+            val intent = Intent(this, SecondActivity::class.java)
+            startActivity(intent)
+        }
+    }
+}
+----------------------------------------------------------------------------------------
+Create the SecondActivity:
+Right-click on the com.example.simpleapp package, select New > Activity > Empty Activity, and name it SecondActivity.
+Update SecondActivity.kt:
+----------------------------------------------------------------------------------------
+package com.example.simpleapp
+
+import androidx.appcompat.app.AppCompatActivity
+import android.os.Bundle
+
+class SecondActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_second)
+    }
+}
+----------------------------------------------------------------------------------------
+Update res/layout/activity_second.xml to something simple:
+----------------------------------------------------------------------------------------
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="This is the second screen"
+        android:layout_centerInParent="true"/>
+</RelativeLayout>
+---------------------------------------------------------------------------------------
+Run the app on an emulator or physical device to make sure it works as expected.
+
+Step 2: Set Up Appium and Write the Python Script
+Install Appium:
+
+Make sure you have Node.js installed.
+Install Appium via npm:
+                    npm install -g appium
+Start the Appium server:
+                    appium
+Install Appium-Python-Client:
+                    pip install Appium-Python-Client
+Write the Python Script:
+-----------------------------------------------------------------------------------------
+from appium import webdriver
+import time
+
+# Set up desired capabilities
+desired_caps = {
+    'platformName': 'Android',
+    'platformVersion': 'YOUR_DEVICE_PLATFORM_VERSION',
+    'deviceName': 'YOUR_DEVICE_NAME',
+    'app': 'PATH_TO_YOUR_APP_APK',
+    'automationName': 'UiAutomator2'
+}
+
+# Connect to the Appium server
+driver = webdriver.Remote('http://localhost:4723/wd/hub', desired_caps)
+time.sleep(5)
+xml_dump = driver.page_source
+print(xml_dump)
+
+# Find the button by its ID and click it
+button = driver.find_element_by_id('com.example.simpleapp:id/button')
+button.click()
+
+# Wait for the next screen to load
+time.sleep(3)
+
+# Get the XML dump of the new screen (if needed)
+new_screen_xml_dump = driver.page_source
+print(new_screen_xml_dump)
+
+# Quit the driver
+driver.quit()
+----------------------------------------------------------------------------
+
+The "PATH TO YOUR APP APK" is the file path to the APK (Android Package) file of your Android app. Here's how you can get it:
+
+Building the APK in Android Studio
+Open your project in Android Studio.
+
+Build the APK:
+
+Go to Build in the top menu.
+Select Build Bundle(s) / APK(s).
+Choose Build APK(s).
+
+
+Locate the APK:
+
+After the build is complete, a notification will appear in the bottom right corner of Android Studio. Click on locate or show in explorer to find the APK file.
+The APK is usually located in the app/build/outputs/apk/debug/ or app/build/outputs/apk/release/ directory, depending on your build configuration.
+
+Once you have the APK file, you can use its file path in your Python script. For example, if your APK is located at 
+C:/Users/YourUsername/AndroidStudioProjects/SimpleApp/app/build/outputs/apk/debug/app-debug.apk, you would set PATH_TO_YOUR_APP_APK to this path.
+
+
+1. Device Name
+You can get the device name using the adb (Android Debug Bridge) command:
+Connect your device to your computer or start your emulator.
+Open a terminal or command prompt.
+Run the following command to list all connected devices:
+
+          --> adb devices
+
+2. Platform Version
+To find the Android version of your device or emulator:
+On a physical device: Go to Settings > About phone > Android version.
+On an emulator: You can see the Android version in the AVD (Android Virtual Device) Manager in Android Studio.
+Alternatively, you can use adb:
+
+          --> adb shell getprop ro.build.version.release
+
+
+3. App Package and Activity (Optional)
+The app package name and the main activity are useful for launching the app directly if it's already installed on the device. To find these:
+Use aapt (Android Asset Packaging Tool), which comes with the Android SDK. Run the following command:
+
+         --> aapt dump badging path/to/your/app.apk
+
+Look for the package and launchable-activity fields in the output.
+
+-----------------------------------------------------------------------------------------------------
+
+ALL DATA IN XML FILE
+
+-----------------------------------------------------------------------------------------------------
+
+from appium import webdriver
+import time
+
+# Set up desired capabilities
+desired_caps = {
+    'platformName': 'Android',
+    'platformVersion': '11.0',  # Replace with your device's Android version
+    'deviceName': 'emulator-5554',  # Replace with your device/emulator name
+    'app': 'C:/Users/YourUsername/AndroidStudioProjects/SimpleApp/app/build/outputs/apk/debug/app-debug.apk',
+    'automationName': 'UiAutomator2'
+}
+
+# Connect to the Appium server
+driver = webdriver.Remote('http://localhost:4723/wd/hub', desired_caps)
+
+# Wait for the app to load
+time.sleep(5)
+
+# Get the XML dump of the current screen
+xml_dump = driver.page_source
+
+# Write XML dump to a file
+file_path = 'xml_dump.xml'  # Specify your desired file path
+with open(file_path, 'w', encoding='utf-8') as file:
+    file.write(xml_dump)
+
+# Find the button by its ID and click it (example interaction)
+button = driver.find_element_by_id('com.example.simpleapp:id/button')
+button.click()
+
+# Wait for the next screen to load
+time.sleep(3)
+
+# Get the XML dump of the new screen (if needed)
+new_screen_xml_dump = driver.page_source
+
+# Write new XML dump to a file (optional)
+new_file_path = 'new_xml_dump.xml'  # Specify your desired file path
+with open(new_file_path, 'w', encoding='utf-8') as new_file:
+    new_file.write(new_screen_xml_dump)
+
+# Quit the driver
+driver.quit()
+
+-------------------------------------------------------------------------------------------------
+
+LIMITED DATA 
+
+-------------------------------------------------------------------------------------------------
+
+from appium import webdriver
+import time
+import xml.etree.ElementTree as ET
+from datetime import datetime
+
+# Function to parse XML and extract specific attributes
+def parse_xml_dump(xml_dump):
+    root = ET.fromstring(xml_dump)
+    screen_name = root.tag  # Assuming root tag represents screen name
+    screen_id = root.attrib.get('resource-id', '')
+    previous_screen_name = ''  # You would need to define logic for previous screen tracking
+    clickable = root.attrib.get('clickable', 'false')
+    enable = root.attrib.get('enabled', 'false')
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    return {
+        'screen_name': screen_name,
+        'screen_id': screen_id,
+        'previous_screen_name': previous_screen_name,
+        'clickable': clickable,
+        'enable': enable,
+        'timestamp': timestamp
+    }
+
+# Set up desired capabilities
+desired_caps = {
+    'platformName': 'Android',
+    'platformVersion': '11.0',  # Replace with your device's Android version
+    'deviceName': 'emulator-5554',  # Replace with your device/emulator name
+    'app': 'C:/Users/YourUsername/AndroidStudioProjects/SimpleApp/app/build/outputs/apk/debug/app-debug.apk',
+    'automationName': 'UiAutomator2'
+}
+
+# Connect to the Appium server
+driver = webdriver.Remote('http://localhost:4723/wd/hub', desired_caps)
+
+# Wait for the app to load
+time.sleep(5)
+
+# Get the XML dump of the current screen
+xml_dump = driver.page_source
+
+# Parse XML dump and extract specific data points
+data = parse_xml_dump(xml_dump)
+
+# Print or process the extracted data as needed
+print(data)
+
+# Find the button by its ID and click it (example interaction)
+button = driver.find_element_by_id('com.example.simpleapp:id/button')
+button.click()
+
+# Wait for the next screen to load
+time.sleep(3)
+
+# Get the XML dump of the new screen (if needed)
+new_screen_xml_dump = driver.page_source
+
+# Parse new XML dump and extract specific data points
+new_data = parse_xml_dump(new_screen_xml_dump)
+
+# Print or process the extracted data for the new screen
+print(new_data)
+
+# Quit the driver
+driver.quit()
+
+------------------------------------------------------------------------------------------
+
+SAVING IN JSON
+
+------------------------------------------------------------------------------------------
+
+from appium import webdriver
+import time
+import xml.etree.ElementTree as ET
+import json
+from datetime import datetime
+
+# Function to parse XML and extract specific attributes
+def parse_xml_dump(xml_dump):
+    root = ET.fromstring(xml_dump)
+    screen_name = root.tag  # Assuming root tag represents screen name
+    screen_id = root.attrib.get('resource-id', '')
+    previous_screen_name = ''  # You would need to define logic for previous screen tracking
+    clickable = root.attrib.get('clickable', 'false')
+    enable = root.attrib.get('enabled', 'false')
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    return {
+        'screen_name': screen_name,
+        'screen_id': screen_id,
+        'previous_screen_name': previous_screen_name,
+        'clickable': clickable,
+        'enable': enable,
+        'timestamp': timestamp
+    }
+
+# Set up desired capabilities
+desired_caps = {
+    'platformName': 'Android',
+    'platformVersion': '11.0',  # Replace with your device's Android version
+    'deviceName': 'emulator-5554',  # Replace with your device/emulator name
+    'app': 'C:/Users/YourUsername/AndroidStudioProjects/SimpleApp/app/build/outputs/apk/debug/app-debug.apk',
+    'automationName': 'UiAutomator2'
+}
+
+# Connect to the Appium server
+driver = webdriver.Remote('http://localhost:4723/wd/hub', desired_caps)
+
+# Wait for the app to load
+time.sleep(5)
+
+# Get the XML dump of the current screen
+xml_dump = driver.page_source
+
+# Parse XML dump and extract specific data points
+data = parse_xml_dump(xml_dump)
+
+# Save data to JSON file
+json_file_path = 'screen_data.json'  # Specify your desired file path
+with open(json_file_path, 'w') as json_file:
+    json.dump(data, json_file, indent=4)
+
+# Find the button by its ID and click it (example interaction)
+button = driver.find_element_by_id('com.example.simpleapp:id/button')
+button.click()
+
+# Wait for the next screen to load
+time.sleep(3)
+
+# Get the XML dump of the new screen (if needed)
+new_screen_xml_dump = driver.page_source
+
+# Parse new XML dump and extract specific data points
+new_data = parse_xml_dump(new_screen_xml_dump)
+
+# Save new data to JSON file
+new_json_file_path = 'new_screen_data.json'  # Specify your desired file path
+with open(new_json_file_path, 'w') as new_json_file:
+    json.dump(new_data, new_json_file, indent=4)
+
+# Quit the driver
+driver.quit()
+
+--------------------------------------------------------------------------------------------
